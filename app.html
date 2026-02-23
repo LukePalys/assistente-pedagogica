@@ -182,6 +182,17 @@
             color: #f0f0f0;
         }
         
+        .message.loading {
+            align-self: flex-start;
+            background: #f0f0f0;
+            color: #999;
+        }
+        
+        body.dark-mode .message.loading {
+            background: #2a2a3e;
+            color: #aaa;
+        }
+        
         .input-area {
             padding: 20px;
             border-top: 1px solid #eee;
@@ -325,6 +336,20 @@
             min-height: 120px;
         }
         
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #ff6b6b;
+            border-top: 2px solid transparent;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
         @media (max-width: 768px) {
             .container {
                 flex-direction: column;
@@ -375,7 +400,7 @@
                     <div class="messages" id="messages"></div>
                     <div class="input-area">
                         <input type="text" id="message-input" placeholder="Digite sua pergunta sobre planejamento pedagógico..." onkeypress="handleKeyPress(event)">
-                        <button class="btn" onclick="sendMessage()">Enviar</button>
+                        <button class="btn" onclick="sendMessage()" id="send-btn">Enviar</button>
                     </div>
                 </div>
             </div>
@@ -407,7 +432,7 @@
                         <label>Descrição da Aula</label>
                         <textarea id="gen-descricao" placeholder="Descreva o que você quer trabalhar..."></textarea>
                     </div>
-                    <button class="btn" onclick="generateDocument()" style="width: 100%;">Gerar Documento BNCC</button>
+                    <button class="btn" onclick="generateDocument()" style="width: 100%;" id="gen-btn">Gerar Documento BNCC</button>
                 </div>
             </div>
         </div>
@@ -460,21 +485,32 @@
             const text = input.value.trim();
             if (!text) return;
             
+            const sendBtn = document.getElementById('send-btn');
+            sendBtn.disabled = true;
+            
             messages.push({ role: 'user', content: text });
             addMessageToUI('user', text);
             input.value = '';
             
             try {
+                // Adicionar mensagem de carregamento
+                addMessageToUI('loading', 'Pensando...');
+                
                 const response = await fetch(API_URL, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${API_KEY}`,
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'HTTP-Referer': window.location.origin,
+                        'X-Title': 'Assistente Pedagógica'
                     },
                     body: JSON.stringify({
                         model: 'openrouter/auto',
                         messages: [
-                            { role: 'system', content: 'Você é uma assistente pedagógica especializada em educação infantil e BNCC.' },
+                            { 
+                                role: 'system', 
+                                content: 'Você é uma assistente pedagógica especializada em educação infantil e BNCC (Base Nacional Comum Curricular). Responda de forma clara, prática e sempre considerando as competências e habilidades da BNCC. Seja amigável e apoiadora.' 
+                            },
                             ...messages
                         ],
                         temperature: 0.7,
@@ -482,12 +518,36 @@
                     })
                 });
                 
+                if (!response.ok) {
+                    throw new Error(`Erro ${response.status}: ${response.statusText}`);
+                }
+                
                 const data = await response.json();
+                
+                if (!data.choices || !data.choices[0]) {
+                    throw new Error('Resposta inválida da API');
+                }
+                
                 const aiMessage = data.choices[0].message.content;
                 messages.push({ role: 'assistant', content: aiMessage });
+                
+                // Remover mensagem de carregamento
+                const messagesDiv = document.getElementById('messages');
+                const loadingMsg = messagesDiv.querySelector('.message.loading');
+                if (loadingMsg) loadingMsg.remove();
+                
                 addMessageToUI('ai', aiMessage);
             } catch (error) {
-                addMessageToUI('ai', '❌ Erro ao conectar com a IA.');
+                console.error('Erro:', error);
+                
+                // Remover mensagem de carregamento
+                const messagesDiv = document.getElementById('messages');
+                const loadingMsg = messagesDiv.querySelector('.message.loading');
+                if (loadingMsg) loadingMsg.remove();
+                
+                addMessageToUI('ai', `❌ Erro ao conectar: ${error.message}. Verifique sua conexão e tente novamente.`);
+            } finally {
+                sendBtn.disabled = false;
             }
         }
         
@@ -510,28 +570,70 @@
                 return;
             }
             
+            const genBtn = document.getElementById('gen-btn');
+            genBtn.disabled = true;
+            genBtn.textContent = 'Gerando...';
+            
             try {
                 const response = await fetch(API_URL, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${API_KEY}`,
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'HTTP-Referer': window.location.origin,
+                        'X-Title': 'Assistente Pedagógica'
                     },
                     body: JSON.stringify({
                         model: 'openrouter/auto',
                         messages: [{
                             role: 'system',
-                            content: 'Crie um planejamento pedagógico BNCC estruturado com: Objetivo, Competências BNCC, Atividades, Recursos, Avaliação e Referências.'
+                            content: `Você é um especialista em educação infantil e BNCC. Crie um planejamento pedagógico ESTRUTURADO com as seguintes seções:
+
+# [TEMA]
+
+## Objetivo Geral
+[Objetivo claro e mensurável]
+
+## Competências BNCC Trabalhadas
+- [Competência 1]
+- [Competência 2]
+- [Competência 3]
+
+## Atividades Propostas
+### Atividade 1: [Nome]
+[Descrição detalhada]
+
+### Atividade 2: [Nome]
+[Descrição detalhada]
+
+## Recursos Necessários
+- [Recurso 1]
+- [Recurso 2]
+
+## Avaliação
+[Como avaliar o aprendizado]
+
+## Referências BNCC
+[Referências específicas da BNCC]`
                         }, {
                             role: 'user',
-                            content: `Tema: ${tema}, Faixa: ${faixa}, Descrição: ${descricao}`
+                            content: `Tema: ${tema}\nFaixa Etária: ${faixa}\nDescrição: ${descricao}`
                         }],
                         temperature: 0.7,
                         max_tokens: 2000
                     })
                 });
                 
+                if (!response.ok) {
+                    throw new Error(`Erro ${response.status}: ${response.statusText}`);
+                }
+                
                 const data = await response.json();
+                
+                if (!data.choices || !data.choices[0]) {
+                    throw new Error('Resposta inválida da API');
+                }
+                
                 const content = data.choices[0].message.content;
                 
                 const doc = {
@@ -544,11 +646,15 @@
                 
                 documents.push(doc);
                 localStorage.setItem('documents', JSON.stringify(documents));
-                alert('✅ Documento gerado!');
+                alert('✅ Documento gerado com sucesso!');
                 document.getElementById('gen-tema').value = '';
                 document.getElementById('gen-descricao').value = '';
             } catch (error) {
-                alert('❌ Erro ao gerar documento');
+                console.error('Erro:', error);
+                alert(`❌ Erro ao gerar documento: ${error.message}`);
+            } finally {
+                genBtn.disabled = false;
+                genBtn.textContent = 'Gerar Documento BNCC';
             }
         }
         
@@ -575,30 +681,48 @@
         
         function viewDocument(id) {
             const doc = documents.find(d => d.id === id);
-            if (doc) alert(doc.content);
+            if (doc) {
+                const content = doc.content.replace(/\n/g, '<br>');
+                alert(doc.content);
+            }
         }
         
         function downloadPDF(id) {
             const doc = documents.find(d => d.id === id);
             if (doc) {
                 const element = document.createElement('div');
-                element.innerHTML = `<h1>${doc.title}</h1><p>${doc.content.replace(/\n/g, '<br>')}</p>`;
+                element.style.padding = '20px';
+                element.innerHTML = `
+                    <h1>${doc.title}</h1>
+                    <p><strong>Faixa Etária:</strong> ${doc.faixa}</p>
+                    <p><strong>Data:</strong> ${doc.date}</p>
+                    <hr>
+                    ${doc.content.replace(/\n/g, '<br>')}
+                `;
                 html2pdf().set({ margin: 10, filename: `${doc.title}.pdf` }).from(element).save();
             }
         }
         
         function deleteDocument(id) {
-            if (confirm('Deletar este documento?')) {
+            if (confirm('Tem certeza que deseja deletar este documento?')) {
                 documents = documents.filter(d => d.id !== id);
                 localStorage.setItem('documents', JSON.stringify(documents));
                 renderDocuments();
             }
         }
         
+        // Carregar documentos salvos
         const saved = localStorage.getItem('documents');
-        if (saved) documents = JSON.parse(saved);
+        if (saved) {
+            try {
+                documents = JSON.parse(saved);
+            } catch (e) {
+                documents = [];
+            }
+        }
         
-        addMessageToUI('ai', '👋 Olá! Sou sua assistente pedagógica. Como posso ajudar você?');
+        // Mensagem inicial
+        addMessageToUI('ai', '👋 Olá! Sou sua assistente pedagógica. Como posso ajudar você com o planejamento de suas aulas? 📚');
     </script>
 </body>
 </html>
