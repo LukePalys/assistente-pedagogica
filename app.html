@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assistente Pedagógica Infantil - Planejamento com IA</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #f0e8f5 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        body.dark-mode {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #f0f0f0;
+        }
+        
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 600;
+        }
+        
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        .sidebar {
+            width: 280px;
+            background: white;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        
+        body.dark-mode .sidebar {
+            background: #1a1a2e;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
+        }
+        
+        .logo {
+            font-size: 1.8em;
+            font-weight: 700;
+            margin-bottom: 30px;
+            background: linear-gradient(135deg, #ff6b6b 0%, #ff8c42 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .nav-item {
+            padding: 12px 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #f5f5f5;
+            color: #333;
+        }
+        
+        body.dark-mode .nav-item {
+            background: #2a2a3e;
+            color: #f0f0f0;
+        }
+        
+        .nav-item:hover {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ff8c42 100%);
+            color: white;
+        }
+        
+        .nav-item.active {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ff8c42 100%);
+            color: white;
+        }
+        
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ff8c42 100%);
+            color: white;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header h1 {
+            font-size: 1.5em;
+        }
+        
+        .theme-toggle {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.2em;
+            transition: all 0.3s;
+        }
+        
+        .theme-toggle:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 30px;
+            display: none;
+        }
+        
+        .content.active {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        body.dark-mode .chat-container {
+            background: #1a1a2e;
+        }
+        
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .message {
+            padding: 12px 16px;
+            border-radius: 8px;
+            max-width: 70%;
+            word-wrap: break-word;
+        }
+        
+        .message.user {
+            align-self: flex-end;
+            background: linear-gradient(135deg, #ff6b6b 0%, #ff8c42 100%);
+            color: white;
+        }
+        
+        .message.ai {
+            align-self: flex-start;
+            background: #f0f0f0;
+            color: #333;
+        }
+        
+        body.dark-mode .message.ai {
+            background: #2a2a3e;
+            color: #f0f0f0;
+        }
+        
+        .input-area {
+            padding: 20px;
+            border-top: 1px solid #eee;
+            display: flex;
+            gap: 10px;
+        }
+        
+        body.dark-mode .input-area {
+            border-top-color: #2a2a3e;
+        }
+        
+        .input-area input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-family: 'Inter', sans-serif;
+            font-size: 1em;
+        }
+        
+        body.dark-mode .input-area input {
+            background: #2a2a3e;
+            border-color: #3a3a4e;
+            color: #f0f0f0;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #ff6b6b 0%, #ff8c42 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.3);
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .documents-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        
+        .document-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s;
+        }
+        
+        body.dark-mode .document-card {
+            background: #1a1a2e;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .document-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+        }
+        
+        .document-card h3 {
+            color: #ff6b6b;
+            margin-bottom: 10px;
+        }
+        
+        .document-card p {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 15px;
+        }
+        
+        body.dark-mode .document-card p {
+            color: #aaa;
+        }
+        
+        .document-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .document-actions button {
+            flex: 1;
+            padding: 8px 12px;
+            font-size: 0.85em;
+        }
+        
+        .generator-form {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+        }
+        
+        body.dark-mode .generator-form {
+            background: #1a1a2e;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-family: 'Inter', sans-serif;
+            font-size: 1em;
+        }
+        
+        body.dark-mode .form-group input,
+        body.dark-mode .form-group textarea,
+        body.dark-mode .form-group select {
+            background: #2a2a3e;
+            border-color: #3a3a4e;
+            color: #f0f0f0;
+        }
+        
+        .form-group textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                flex-direction: row;
+                height: auto;
+                padding: 10px;
+            }
+            
+            .nav-item {
+                flex: 1;
+                margin-bottom: 0;
+                margin-right: 10px;
+            }
+            
+            .message {
+                max-width: 90%;
+            }
+            
+            .documents-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <div class="logo">🍎 Assistente</div>
+            <div class="nav-item active" onclick="showChat()">💬 Chat</div>
+            <div class="nav-item" onclick="showDocuments()">📄 Documentos</div>
+            <div class="nav-item" onclick="showGenerator()">✨ Gerar Novo</div>
+            <div style="flex: 1;"></div>
+            <button class="theme-toggle" onclick="toggleTheme()">🌙</button>
+        </div>
+        
+        <div class="main-content">
+            <div class="header">
+                <h1>Assistente Pedagógica Infantil</h1>
+                <div></div>
+            </div>
+            
+            <div id="chat-content" class="content active">
+                <div class="chat-container">
+                    <div class="messages" id="messages"></div>
+                    <div class="input-area">
+                        <input type="text" id="message-input" placeholder="Digite sua pergunta sobre planejamento pedagógico..." onkeypress="handleKeyPress(event)">
+                        <button class="btn" onclick="sendMessage()">Enviar</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="documents-content" class="content">
+                <h2 style="margin-bottom: 20px;">Meus Documentos</h2>
+                <div class="documents-grid" id="documents-grid">
+                    <p style="grid-column: 1/-1; color: #999;">Nenhum documento gerado ainda.</p>
+                </div>
+            </div>
+            
+            <div id="generator-content" class="content">
+                <h2 style="margin-bottom: 20px;">Gerar Novo Documento</h2>
+                <div class="generator-form">
+                    <div class="form-group">
+                        <label>Tema/Objetivo da Aula</label>
+                        <input type="text" id="gen-tema" placeholder="Ex: Conhecendo as cores primárias">
+                    </div>
+                    <div class="form-group">
+                        <label>Faixa Etária</label>
+                        <select id="gen-faixa">
+                            <option>Berçário (0-1 anos)</option>
+                            <option>Maternal (1-2 anos)</option>
+                            <option>Pré-escola (3-5 anos)</option>
+                            <option>Educação Infantil (4-6 anos)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Descrição da Aula</label>
+                        <textarea id="gen-descricao" placeholder="Descreva o que você quer trabalhar..."></textarea>
+                    </div>
+                    <button class="btn" onclick="generateDocument()" style="width: 100%;">Gerar Documento BNCC</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const API_KEY = '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';
+        const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
+        
+        let messages = [];
+        let documents = [];
+        let darkMode = localStorage.getItem('darkMode') === 'true';
+        
+        if (darkMode) document.body.classList.add('dark-mode');
+        
+        function toggleTheme() {
+            darkMode = !darkMode;
+            document.body.classList.toggle('dark-mode');
+            localStorage.setItem('darkMode', darkMode);
+        }
+        
+        function showChat() {
+            document.querySelectorAll('.content').forEach(el => el.classList.remove('active'));
+            document.getElementById('chat-content').classList.add('active');
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+        
+        function showDocuments() {
+            document.querySelectorAll('.content').forEach(el => el.classList.remove('active'));
+            document.getElementById('documents-content').classList.add('active');
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            event.target.classList.add('active');
+            renderDocuments();
+        }
+        
+        function showGenerator() {
+            document.querySelectorAll('.content').forEach(el => el.classList.remove('active'));
+            document.getElementById('generator-content').classList.add('active');
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+        
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') sendMessage();
+        }
+        
+        async function sendMessage() {
+            const input = document.getElementById('message-input');
+            const text = input.value.trim();
+            if (!text) return;
+            
+            messages.push({ role: 'user', content: text });
+            addMessageToUI('user', text);
+            input.value = '';
+            
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${API_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: 'openrouter/auto',
+                        messages: [
+                            { role: 'system', content: 'Você é uma assistente pedagógica especializada em educação infantil e BNCC.' },
+                            ...messages
+                        ],
+                        temperature: 0.7,
+                        max_tokens: 1000
+                    })
+                });
+                
+                const data = await response.json();
+                const aiMessage = data.choices[0].message.content;
+                messages.push({ role: 'assistant', content: aiMessage });
+                addMessageToUI('ai', aiMessage);
+            } catch (error) {
+                addMessageToUI('ai', '❌ Erro ao conectar com a IA.');
+            }
+        }
+        
+        function addMessageToUI(role, text) {
+            const messagesDiv = document.getElementById('messages');
+            const messageEl = document.createElement('div');
+            messageEl.className = `message ${role}`;
+            messageEl.textContent = text;
+            messagesDiv.appendChild(messageEl);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        
+        async function generateDocument() {
+            const tema = document.getElementById('gen-tema').value;
+            const faixa = document.getElementById('gen-faixa').value;
+            const descricao = document.getElementById('gen-descricao').value;
+            
+            if (!tema || !descricao) {
+                alert('Preencha todos os campos!');
+                return;
+            }
+            
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${API_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: 'openrouter/auto',
+                        messages: [{
+                            role: 'system',
+                            content: 'Crie um planejamento pedagógico BNCC estruturado com: Objetivo, Competências BNCC, Atividades, Recursos, Avaliação e Referências.'
+                        }, {
+                            role: 'user',
+                            content: `Tema: ${tema}, Faixa: ${faixa}, Descrição: ${descricao}`
+                        }],
+                        temperature: 0.7,
+                        max_tokens: 2000
+                    })
+                });
+                
+                const data = await response.json();
+                const content = data.choices[0].message.content;
+                
+                const doc = {
+                    id: Date.now(),
+                    title: tema,
+                    faixa: faixa,
+                    content: content,
+                    date: new Date().toLocaleDateString('pt-BR')
+                };
+                
+                documents.push(doc);
+                localStorage.setItem('documents', JSON.stringify(documents));
+                alert('✅ Documento gerado!');
+                document.getElementById('gen-tema').value = '';
+                document.getElementById('gen-descricao').value = '';
+            } catch (error) {
+                alert('❌ Erro ao gerar documento');
+            }
+        }
+        
+        function renderDocuments() {
+            const grid = document.getElementById('documents-grid');
+            if (documents.length === 0) {
+                grid.innerHTML = '<p style="grid-column: 1/-1; color: #999;">Nenhum documento gerado ainda.</p>';
+                return;
+            }
+            
+            grid.innerHTML = documents.map(doc => `
+                <div class="document-card">
+                    <h3>${doc.title}</h3>
+                    <p><strong>Faixa:</strong> ${doc.faixa}</p>
+                    <p><strong>Data:</strong> ${doc.date}</p>
+                    <div class="document-actions">
+                        <button class="btn" onclick="downloadPDF(${doc.id})">📥 PDF</button>
+                        <button class="btn" onclick="viewDocument(${doc.id})">👁️ Ver</button>
+                        <button class="btn" onclick="deleteDocument(${doc.id})" style="background: #ff6b6b;">🗑️</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function viewDocument(id) {
+            const doc = documents.find(d => d.id === id);
+            if (doc) alert(doc.content);
+        }
+        
+        function downloadPDF(id) {
+            const doc = documents.find(d => d.id === id);
+            if (doc) {
+                const element = document.createElement('div');
+                element.innerHTML = `<h1>${doc.title}</h1><p>${doc.content.replace(/\n/g, '<br>')}</p>`;
+                html2pdf().set({ margin: 10, filename: `${doc.title}.pdf` }).from(element).save();
+            }
+        }
+        
+        function deleteDocument(id) {
+            if (confirm('Deletar este documento?')) {
+                documents = documents.filter(d => d.id !== id);
+                localStorage.setItem('documents', JSON.stringify(documents));
+                renderDocuments();
+            }
+        }
+        
+        const saved = localStorage.getItem('documents');
+        if (saved) documents = JSON.parse(saved);
+        
+        addMessageToUI('ai', '👋 Olá! Sou sua assistente pedagógica. Como posso ajudar você?');
+    </script>
+</body>
+</html>
